@@ -6,12 +6,15 @@ import sys
 import django
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from django.utils import timezone
 from dotenv import load_dotenv
 
+from bot.scheduler import schedule_maker
 from bot.utils import check_user, add_user_messages
 from db.engine import setup_database, meta
 from django_admin_panel.bot.tasks import check_and_send_telegram_message
@@ -19,19 +22,23 @@ from django_admin_panel.bot.tasks import check_and_send_telegram_message
 load_dotenv()
 # Bot token can be obtained via https://t.me/BotFather
 TOKEN = os.getenv("BOT_TOKEN")
-
+admin_id = os.getenv("admin_id")
 # All handlers should be attached to the Router (or Dispatcher)
 dp = Dispatcher()
 
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    logging.info('Check')
     await check_user(message, meta)
-    check_and_send_telegram_message.delay()
+
     await message.answer(f"Hello, {hbold(message.from_user.full_name)}!")
 
-
+@dp.message(Command(commands=('reply_all',)))
+async def reply_to_users(message: Message):
+    if message.from_user.id == int(admin_id):
+        await check_and_send_telegram_message()
+    else:
+        await message.answer(f"You are not authorized to use this command.")
 
 @dp.message()
 async def echo_handler(message: types.Message) -> None:
@@ -48,12 +55,18 @@ async def echo_handler(message: types.Message) -> None:
 
 # async def on_startup(dispatcher: Dispatcher):
 #     meta.reflect(bind=engine)
+async def startup_scheduler():
+    scheduler = AsyncIOScheduler()
+    await schedule_maker(scheduler)
+    scheduler.add_job(check_and_send_telegram_message, trigger=IntervalTrigger(seconds=5))
+    scheduler.start()
 
 async def main() -> None:
     # Initialize Bot instance with a default parse mode which will be passed to all API calls
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
     # And the run events dispatching
     await setup_database()
+    await startup_scheduler()
     await dp.start_polling(bot)
 
 

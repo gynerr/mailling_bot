@@ -48,7 +48,8 @@ async def echo_handler(message: types.Message) -> None:
         await message.answer(text='Доброго времени суток, администратор ответит на ваше сообщение когда будет в сети!')
         # await bot.send_message(chat_id=message.chat.id, message="Администратор ответит на ваше сообщение когда будет в сети")
         await add_user_messages(message, meta)
-    except TypeError:
+    except TypeError as e:
+        print(e)
         # But not all the types is supported to be copied so need to handle it
         await message.answer("Nice try!")
 

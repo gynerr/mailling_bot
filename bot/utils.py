@@ -16,6 +16,7 @@ bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
 
 django.setup()
 
+
 async def check_user(message: Message, meta):
     user = meta.tables['bot_botuser']
     async with async_session_maker() as session:
@@ -35,6 +36,11 @@ async def check_user(message: Message, meta):
                 meta.reflect(bind=session.get_bind(), views=True)
             except Exception as e:
                 print("Error inserting data:", e)
+        else:
+            current_date = datetime.now().date()
+            stmt = update(user).where(user.c.tg_id==message.from_user.id).values(last_message_date=datetime.now().date())
+            result = await session.execute(stmt)
+
 
 
 async def add_user_messages(message: Message, meta):
@@ -53,4 +59,3 @@ async def send_telegram_message(message):
     user_message = message.message_id
     bot_user = user_message.user_id
     await bot.send_message(chat_id=bot_user.tg_id, text=message.response_text)
-

@@ -5,6 +5,7 @@ import django
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import Message
+from channels.db import database_sync_to_async
 from dotenv import load_dotenv
 from sqlalchemy import select, insert, update
 
@@ -15,6 +16,13 @@ TOKEN = os.getenv('BOT_TOKEN')
 bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
 
 django.setup()
+
+
+@database_sync_to_async
+def update_last_message_date(tg_id):
+    from django_admin_panel.bot.models import BotUser
+    user = BotUser.objects.get(tg_id=tg_id)
+    user.update_last_message_date()
 
 
 async def check_user(message: Message, meta):
@@ -32,14 +40,18 @@ async def check_user(message: Message, meta):
                         username=message.from_user.username
                     )
                 )
+                await session.execute(
+                    update(user).where(user.c.tg_id == message.from_user.id).values(first_message_date=datetime.today()))
                 await session.commit()
-                meta.reflect(bind=session.get_bind(), views=True)
+                # await session.expire_all()
             except Exception as e:
                 print("Error inserting data:", e)
         else:
-            current_date = datetime.now().date()
-            stmt = update(user).where(user.c.tg_id==message.from_user.id).values(last_message_date=datetime.now().date())
-            result = await session.execute(stmt)
+            current_date = datetime.today()
+            await session.execute(
+                update(user).where(user.c.tg_id == message.from_user.id).values(last_message_date=current_date))
+            await session.commit()
+            # await session.expire_all()
 
 
 
@@ -51,7 +63,6 @@ async def add_user_messages(message: Message, meta):
         usr = result.fetchone()
         await session.execute(
             insert(user_messages).values(user_id_id=usr.id, text=message.text, date_created=datetime.now()))
-        await session.execute(update(user))
         await session.commit()
 
 

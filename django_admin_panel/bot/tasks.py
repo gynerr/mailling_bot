@@ -6,7 +6,7 @@ from bot.utils import send_telegram_message
 logger = logging.getLogger(__name__)
 
 
-# @shared_task(name='django_admin_panel.bot.tasks.check_and_send_telegram_message')
+@shared_task(name='django_admin_panel.bot.tasks.check_and_send_telegram_message')
 async def check_and_send_telegram_message():
     try:
         from .models import AdminResponse

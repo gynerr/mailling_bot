@@ -12,13 +12,13 @@ class BotUser(models.Model):
     last_name = models.CharField(max_length=25, blank=True, null=True)
     username = models.CharField(max_length=30)
     last_message_date = models.DateField(default=timezone.now)
+    first_message_date = models.DateField(default=timezone.now)
 
     def __str__(self):
         return self.username
 
-    def update_last_message_date(self, date):
-        if date > self.last_message_date:
-            self.last_message_date = date
+    def update_last_message_date(self):
+            self.last_message_date = timezone.now()
             self.save()
 
     class Meta:
@@ -54,6 +54,8 @@ class Mailing(models.Model):
     needs_sending = models.BooleanField(default=True)
     last_message_from = models.DateField(default=timezone.now)
     last_message_on = models.DateField(default=timezone.now)
+    first_message_from = models.DateField(default=timezone.now)
+    first_message_on = models.DateField(default=timezone.now)
 
     def __str__(self):
         return self.text
